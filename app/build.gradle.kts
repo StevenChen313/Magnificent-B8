@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+    id("com.chaquo.python")
 }
 
 android {
@@ -15,6 +16,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64") // Required for Chaquopy
+        }
     }
 
     buildTypes {
@@ -33,6 +38,19 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
+    buildFeatures {
+        viewBinding = true
+    }
+}
+
+chaquopy {
+    defaultConfig {
+        pip {
+            install("opencv-python-headless")
+            install("numpy")
+            install("matplotlib")
+        }
+    }
 }
 
 dependencies {
@@ -42,6 +60,15 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.swiperefreshlayout)
+    implementation(libs.virtual.joystick.android)
+    implementation(libs.battery.meter.view)
+    implementation(libs.glide)
+    implementation(libs.okhttp3.integration)
+    implementation(libs.androidx.navigation.fragment.ktx)
+    implementation(libs.androidx.navigation.ui.ktx)
+    implementation(libs.java.websocket)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

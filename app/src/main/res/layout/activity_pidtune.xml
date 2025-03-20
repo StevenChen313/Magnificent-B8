@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".PIDTuneActivity">
+
+    <!-- Kp_angle edittext -->
+
+    <EditText
+        android:id="@+id/et_Kp_angle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="-10dp"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_Kp_angle"
+        app:layout_constraintLeft_toRightOf="@+id/tv_Kp_angle"
+        android:text="0" />
+
+    <TextView
+        android:id="@+id/tv_Kp_angle"
+        android:layout_width="70dp"
+        android:layout_height="wrap_content"
+        android:text="Kp Angle"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="30dp"
+        android:layout_marginStart="16dp" />
+
+    <!-- Ki_angle edittext -->
+    <EditText
+        android:id="@+id/et_Ki_angle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="-10dp"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_Ki_angle"
+        app:layout_constraintLeft_toRightOf="@+id/tv_Ki_angle"
+        android:text="0" />
+
+    <TextView
+        android:id="@+id/tv_Ki_angle"
+        android:layout_width="70dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="30dp"
+        android:layout_marginStart="16dp"
+        android:text="Ki Angle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_Kp_angle" />
+
+    <!-- Kd_angle edittext -->
+    <EditText
+        android:id="@+id/et_Kd_angle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="-10dp"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_Kd_angle"
+        app:layout_constraintLeft_toRightOf="@+id/tv_Kd_angle"
+        android:text="0" />
+
+    <TextView
+        android:id="@+id/tv_Kd_angle"
+        android:layout_width="70dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="30dp"
+        android:layout_marginStart="16dp"
+        android:text="Kd Angle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_Ki_angle" />
+
+    <!-- Kp_omega edittext -->
+    <EditText
+        android:id="@+id/et_Kp_omega"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="-10dp"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_Kp_omega"
+        app:layout_constraintLeft_toRightOf="@+id/tv_Kp_omega"
+        android:text="0" />
+
+    <TextView
+        android:id="@+id/tv_Kp_omega"
+        android:layout_width="70dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="30dp"
+        android:layout_marginStart="16dp"
+        android:text="Kp Omega"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_Kd_angle" />
+
+    <!-- Ki_omega edittext -->
+    <EditText
+        android:id="@+id/et_Ki_omega"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="-10dp"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_Ki_omega"
+        app:layout_constraintLeft_toRightOf="@+id/tv_Ki_omega"
+        android:text="0" />
+
+    <TextView
+        android:id="@+id/tv_Ki_omega"
+        android:layout_width="70dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="30dp"
+        android:layout_marginStart="16dp"
+        android:text="Ki Omega"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_Kp_omega" />
+
+    <!-- Kd_omega edittext -->
+    <EditText
+        android:id="@+id/et_Kd_omega"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="-10dp"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_Kd_omega"
+        app:layout_constraintLeft_toRightOf="@+id/tv_Kd_omega"
+        android:text="0" />
+
+    <TextView
+        android:id="@+id/tv_Kd_omega"
+        android:layout_width="70dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="30dp"
+        android:layout_marginStart="16dp"
+        android:text="Kd Omega"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_Ki_omega" />
+
+    <Button
+        android:id="@+id/btn_PIDsend"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Send PID Values"
+        android:textSize="18sp"
+        android:backgroundTint="@color/gray"
+        android:textColor="@color/black"
+        app:layout_constraintTop_toBottomOf="@+id/tv_Kd_omega"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="30dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"/>
+
+    <!-- Disconnect Button -->
+<Button
+    android:id="@+id/btn_disconnect"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:text="Disconnect"
+    android:textSize="18sp"
+    android:backgroundTint="@color/gray"
+    android:textColor="@color/black"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    android:layout_margin="16dp" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

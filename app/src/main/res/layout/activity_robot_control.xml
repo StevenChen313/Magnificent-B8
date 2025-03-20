@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:background="@color/white"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".RobotControlActivity">
+
+    <ImageView
+        android:id="@+id/joystickBackground"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:layout_centerInParent="true"
+        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
+        app:layout_constraintLeft_toLeftOf="@id/joystickView"
+        app:layout_constraintRight_toRightOf="@id/joystickView"
+        app:layout_constraintBottom_toBottomOf="@id/joystickView" />
+
+    <io.github.controlwear.virtual.joystick.android.JoystickView
+        android:id="@+id/joystickView"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        app:JV_borderAlpha="0"
+        app:JV_borderWidth="10dp"
+        app:JV_buttonColor="#34c6eb"
+        app:JV_buttonSizeRatio="20%"
+        app:JV_fixedCenter="false"
+        app:backgroundColor="@android:color/transparent"
+        app:layout_constraintBottom_toTopOf="@+id/btn_sendVoice"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <Button
+        android:id="@+id/btn_speech_to_text"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:backgroundTint="@color/gray"
+        android:paddingTop="0dp"
+        android:paddingBottom="0dp"
+        android:text="Voice Control"
+        android:textColor="@color/black"
+        android:textSize="16sp"
+        app:layout_constraintBottom_toTopOf="@+id/recognizedTextView"
+        app:layout_constraintHeight_percent="0.05"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintWidth_percent="0.6" />
+
+    <TextView
+        android:id="@+id/recognizedTextView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:textSize="16sp"
+        android:textAlignment="center"
+        app:layout_constraintBottom_toTopOf="@+id/joystickBackground"
+        app:layout_constraintHeight_percent="0.05"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintWidth_percent="0.6" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:text="CAM: "
+        android:textSize="16sp"
+        android:textAlignment="center"
+        app:layout_constraintEnd_toStartOf="@+id/edittext_camIP"
+        app:layout_constraintTop_toTopOf="@+id/edittext_camIP" />
+
+    <EditText
+        android:id="@+id/edittext_camIP"
+        android:layout_width="140dp"
+        android:layout_height="40dp"
+        android:autofillHints="Speech To Text"
+        android:inputType="text"
+        android:text="192.168.212.19"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.18"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:text="AUD: "
+        android:textSize="16sp"
+        android:textAlignment="center"
+        app:layout_constraintEnd_toStartOf="@+id/edittext_audIP"
+        app:layout_constraintTop_toTopOf="@+id/edittext_audIP" />
+
+    <EditText
+        android:id="@+id/edittext_audIP"
+        android:layout_width="140dp"
+        android:layout_height="40dp"
+        android:autofillHints="Speech To Text"
+        android:inputType="text"
+        android:text="192.168.140.78"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.18"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/edittext_camIP" />
+
+    <Button
+        android:id="@+id/btn_sendVoice"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:alpha="0.5"
+        android:backgroundTint="@color/gray"
+        android:enabled="false"
+        android:text="Waiting for connection..."
+        android:textColor="@color/black"
+        android:textSize="24sp"
+        app:layout_constraintBottom_toTopOf="@+id/btn_disconnect"
+        app:layout_constraintHeight_percent="0.07"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintWidth_percent="0.9" />
+
+    <Button
+        android:visibility="gone"
+        android:id="@+id/btn_recordVoice"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:alpha="0.5"
+        android:backgroundTint="@color/gray"
+        android:enabled="false"
+        android:text="Waiting for connection..."
+        android:textColor="@color/black"
+        android:textSize="24sp"
+        app:layout_constraintHeight_percent="0.07"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btn_sendVoice"
+        app:layout_constraintWidth_percent="0.9" />
+
+    <TextView
+        android:id="@+id/received_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toTopOf="@+id/btn_disconnect"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="1.0" />
+
+    <Button
+        android:id="@+id/btn_disconnect"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintHeight_percent="0.07"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="16dp"
+        android:backgroundTint="@color/gray"
+        android:text="Disconnect"
+        android:textColor="@color/black"
+        android:textSize="25sp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
+    <eo.view.batterymeter.BatteryMeterView
+        android:id="@+id/batteryMeter"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:batteryMeterChargeLevel="0"
+        app:batteryMeterChargingColor="#4caf50"
+        app:batteryMeterColor="#0277bd"
+        app:batteryMeterCriticalChargeLevel="20"
+        app:batteryMeterCriticalColor="#d84315"
+        app:batteryMeterIndicatorColor="@android:color/transparent"
+        app:batteryMeterTheme="rounded"
+        app:batteryMeterUnknownColor="#e0e0e0" />
+
+    <TextView
+        android:id="@+id/tv_batteryLevel"
+        android:layout_width="60dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@+id/batteryMeter"
+        app:layout_constraintRight_toRightOf="parent"
+        android:text="0%"
+        android:textAlignment="center"/>
+
+    <TextView
+        android:id="@+id/tv_temperatureLevel"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toTopOf="@+id/batteryMeter"
+        app:layout_constraintRight_toLeftOf="@id/batteryMeter"
+        android:text="Temperature: 0°C"
+        android:textAlignment="center"/>
+
+    <TextView
+        android:id="@+id/tv_humidityLevel"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@+id/tv_temperatureLevel"
+        app:layout_constraintRight_toLeftOf="@id/batteryMeter"
+        android:text="Humidity: 0%"
+        android:textAlignment="center"/>
+
+    <WebView
+        android:id="@+id/cameraWebView"
+        android:layout_width="360dp"
+        android:layout_height="260dp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_batteryLevel" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
