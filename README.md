@@ -1,5 +1,9 @@
 # UBC ELEC 391 Group B8
 
+# ⚠️ Disclaimer
+
+This project is part of a school assignment and is intended for educational purposes only. Please do not copy, redistribute, or use this code without permission.
+
 # 🤖 Robot Control App
 A user-friendly application designed to remotely control and monitor your two-wheeled balance robot. This app provides a reliable interface for precision and ease of use.
 
@@ -18,3 +22,5 @@ A user-friendly application designed to remotely control and monitor your two-wh
 
 # 📱 Platform Supported
  Android
+
+© 2025 Steven Chen and UBC 2024W ELEC391 Group B8. All rights reserved.
