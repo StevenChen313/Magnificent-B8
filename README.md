@@ -10,11 +10,11 @@ Live video stream from robot’s camera
 
 Sensor data monitoring (e.g., battery, temperature, humidity, distance from obstacles)
 
-Forward, Backward, Left, Right Voice command execution
+Forward, Backward, Left, Right voice command execution
+
+Voice transmission to robot
 
 Manual & autonomous navigation modes
-
-Emergency stop and safety protocols
 
 # 📱 Platform Supported
  Android
