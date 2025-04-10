@@ -16,5 +16,5 @@ Manual & autonomous navigation modes
 
 Emergency stop and safety protocols
 
-# 📱 Platforms Supported
+# 📱 Platform Supported
  Android
