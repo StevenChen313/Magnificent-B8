@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
-    id("com.chaquo.python")
 }
 
 android {
@@ -43,16 +42,6 @@ android {
     }
 }
 
-chaquopy {
-    defaultConfig {
-        pip {
-            install("opencv-python-headless")
-            install("numpy")
-            install("matplotlib")
-        }
-    }
-}
-
 dependencies {
 
     implementation(libs.androidx.core.ktx)
@@ -68,6 +57,7 @@ dependencies {
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
     implementation(libs.java.websocket)
+    implementation(libs.ipcam.view)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

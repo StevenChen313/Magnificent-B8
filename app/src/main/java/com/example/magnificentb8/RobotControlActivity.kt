@@ -53,26 +53,41 @@ import java.net.URI
 import java.util.Locale
 import java.util.UUID
 import android.util.Base64
+import android.view.View
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Switch
 import android.widget.Toast
 import androidx.core.widget.doOnTextChanged
-import com.chaquo.python.Python
-import com.chaquo.python.android.AndroidPlatform
+import com.google.android.material.materialswitch.MaterialSwitch
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import org.json.JSONObject
+import java.io.File
+import java.io.FileInputStream
+import java.io.IOException
 import java.nio.ByteBuffer
 import kotlin.math.cos
+import kotlin.math.pow
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 
 @SuppressLint("MissingPermission")
 class RobotControlActivity : AppCompatActivity() {
+
+    val handler = Handler(Looper.getMainLooper())
+    private var bleRetryRunnable: Runnable? = null
+    private var voiceControlRunnable: Runnable? = null
 
     private var bluetoothGatt: BluetoothGatt? = null
     private var receivedText: TextView? = null
     private var mbtn_sendVoice: Button? = null
     private var mbtn_esp32record: Button? = null
     private var cameraWebView: WebView? = null
-//    private lateinit var textToSpeech: TextToSpeech
     private var recognizedTextView: TextView? = null
     private var edittextcamIP: EditText? = null
     private var edittextaudIP: EditText? = null
@@ -81,9 +96,12 @@ class RobotControlActivity : AppCompatActivity() {
     private var temperatureText: TextView? = null
     private var humidityText: TextView? = null
     private var joystickView: JoystickView? = null
+    private var switch_lineTrack: MaterialSwitch? = null
+    private var switch_face: Switch? = null
+
 
     // For Audio Recording
-    private val SAMPLE_RATE = 32000
+    private val SAMPLE_RATE = 44100
     private val BUFFER_SIZE = 1024
     private var ESP32_IP = "ws://192.168.21.78:12345"
     private var webSocketClient: WebSocketClient? = null
@@ -99,6 +117,17 @@ class RobotControlActivity : AppCompatActivity() {
 
     private var retryCount = 0
     private var maxRetries = 3
+
+    private var IRvoltage = 0.0
+    private var backingMode = false
+    private var tv_tooClose: TextView? = null
+
+    // For camera
+    private var FACE_RECO_IP = "192.168.4.2"
+    private var facePollDebounce = true
+    private var trackTurn = true
+    private var moveRunnable: Runnable? = null
+    private var upRunnable: Runnable? = null
 
     companion object {
         var mServiceUUID: UUID = UUID.fromString("1d87f922-9b01-4c92-b8ef-c76077e00369")
@@ -134,9 +163,11 @@ class RobotControlActivity : AppCompatActivity() {
             .load(R.drawable.joystick_background) // Replace with your GIF file name
             .into(joystickBackground)
 
+        tv_tooClose = findViewById(R.id.tv_tooClose)
+        switch_face = findViewById(R.id.switch_face)
+
         var prevAngle = -1
         var prevStrength = -1
-        val handler = Handler(Looper.getMainLooper())
         var lastSentData: String? // Store last sent data for retry
         joystickView?.setOnMoveListener({ angle, strength ->
             var modifiedAngle = angle
@@ -146,20 +177,35 @@ class RobotControlActivity : AppCompatActivity() {
             }
             if(modifiedAngle < 180) modifiedAngle = 90 - modifiedAngle
             else if(modifiedAngle <= 360) modifiedAngle -= 270
-            else modifiedAngle = 0 // Some error occurred
+            else throw Exception("Invalid angle")
 
             if(modifiedStrength == 0) modifiedAngle = 0
 
+            //transform the strength to elliptical
+            // modifiedStrength = (modifiedStrength.toDouble() * sqrt(1 - 0.55) / sqrt(1 - 0.55 * sin(angle.toDouble() * Math.PI / 180.0).pow(2.0))).toInt()
+
+            if(IRvoltage > 1.48 && modifiedStrength > 0 && !(switch_lineTrack?.isChecked!!)) {
+                modifiedStrength = -10
+                modifiedAngle = 0
+                backingMode =  true
+            }
+
+            if(backingMode) {
+                if(IRvoltage < 0.8 || modifiedStrength <= 0) {
+                    backingMode = false
+                }
+            }
+
             // Only send if values have changed
             if (modifiedAngle != prevAngle || modifiedStrength != prevStrength) {
-                lastSentData = "${modifiedStrength/5}, $modifiedAngle"
-                retryCount = 0 // Reset retry count on new movement
+                bleRetryRunnable?.let { handler.removeCallbacks(it) }
+                lastSentData = "${(modifiedStrength * 0.45).toInt()}, $modifiedAngle"
+                retryCount = 0
                 bleSend(lastSentData!!)
                 prevAngle = modifiedAngle
                 prevStrength = modifiedStrength
             }
         }, 100)
-
 
 
         receivedText = findViewById(R.id.received_text)
@@ -169,14 +215,7 @@ class RobotControlActivity : AppCompatActivity() {
         humidityText = findViewById(R.id.tv_humidityLevel)
 
         batteryMeter?.setOnClickListener {
-            val batteryCharacteristic = bluetoothGatt?.getService(mServiceUUID)
-                ?.getCharacteristic(mBatteryCharacteristicUUID)
-
-            if (batteryCharacteristic != null) {
-                bluetoothGatt?.readCharacteristic(batteryCharacteristic)
-            } else {
-                Log.e("BLE", "❌ Cannot read, characteristic is null")
-            }
+            bleSend("B")
         }
 
         mAddress = intent.getStringExtra("Device_address").toString()
@@ -185,7 +224,7 @@ class RobotControlActivity : AppCompatActivity() {
         mbtn_disconnect.setOnClickListener{
             if(mIsConnected){
                 bluetoothGatt?.disconnect()
-                handler.removeCallbacksAndMessages(null)
+                bleRetryRunnable?.let { handler.removeCallbacks(it) }
             }
             webSocketClient?.close()
             overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, R.anim.fade_in, R.anim.fade_out) // Add fade-out animation
@@ -230,20 +269,43 @@ class RobotControlActivity : AppCompatActivity() {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     Log.d("BUTTON", "Recording Start (Android)")
-                    webSocketClient?.send("START_RECORD")
+                    try {
+                        webSocketClient?.send("START_RECORD")
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                     mbtn_esp32record?.text = "Robot Recording..."
                 }
                 MotionEvent.ACTION_UP -> {
                     Log.d("BUTTON", "Recording Stop (Android)")
-                    webSocketClient?.send("STOP_RECORD")
+                    try {
+                        webSocketClient?.send("STOP_RECORD")
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                     mbtn_esp32record?.text = "Receive Robot Voice"
                 }
             }
             false
         }
 
+        val btn_servoUp = findViewById<Button>(R.id.btn_servoUp)
+        val btn_servoDown = findViewById<Button>(R.id.btn_servoDown)
+        btn_servoUp.setOnClickListener {
+            bleSend("U")
+        }
+        btn_servoDown.setOnClickListener {
+            bleSend("D")
+        }
+
+        edittextcamIP = findViewById(R.id.edittext_camIP)
+        edittextaudIP = findViewById(R.id.edittext_audIP)
+        FACE_RECO_IP = edittextcamIP?.text.toString()
+
         cameraWebView = findViewById(R.id.cameraWebView)
         cameraWebView?.settings?.javaScriptEnabled = true
+        cameraWebView?.setInitialScale(165)
+        loadVideoStream(edittextcamIP?.text.toString())
         cameraWebView?.webViewClient = object : WebViewClient() {
             @Deprecated("Deprecated in Java")
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
@@ -252,25 +314,22 @@ class RobotControlActivity : AppCompatActivity() {
             }
         }
 
-        edittextcamIP = findViewById(R.id.edittext_camIP)
-        edittextaudIP = findViewById(R.id.edittext_audIP)
-        cameraWebView?.loadUrl("http://" + edittextcamIP?.text.toString())
-
         edittextcamIP?.doOnTextChanged { text, _, _, _ ->
-            cameraWebView?.loadUrl("http://" + text.toString())
+            text?.toString()?.let {
+                loadVideoStream(it)
+                FACE_RECO_IP = it
+            }
         }
         edittextaudIP?.doOnTextChanged { text, _, _, _ ->
             ESP32_IP = "ws://" + text.toString() + ":12345"
             connectWebSocket()
         }
 
-        if (!Python.isStarted()) {
-            Python.start(AndroidPlatform(this))
+        val btn_retryaudIP = findViewById<Button>(R.id.btn_retryaudIP)
+        btn_retryaudIP.setOnClickListener {
+            ESP32_IP = "ws://" + edittextaudIP?.text.toString() + ":12345"
+            connectWebSocket()
         }
-
-//        val py = Python.getInstance()
-//        val pyModule = py.getModule("objdetect")
-//        pyModule.callAttr("run1")
 
         recognizedTextView = findViewById(R.id.recognizedTextView)
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
@@ -310,7 +369,7 @@ class RobotControlActivity : AppCompatActivity() {
                     Log.d("STT", "Recognized: $recognizedText")
 
                     // Process voice command
-                    processVoiceCommand(recognizedText)
+                    processMoveCommand(recognizedText, 30, 70)
                 }
             }
 
@@ -328,6 +387,106 @@ class RobotControlActivity : AppCompatActivity() {
         // Connect to WebSocket server to ESP32-A1S
         ESP32_IP = "ws://" + edittextaudIP?.text.toString() + ":12345"
         connectWebSocket()
+
+        val facePoller = object : Runnable {
+            override fun run() {
+                try {
+                    fetchHTTP("count")
+                }
+                catch (e: Exception){
+                    Log.e("HTTP", "❌ Error fetching face count: ${e.message}")
+                }
+                handler.postDelayed(this, 500)
+            }
+        }
+
+        val lineTrackPoller = object : Runnable {
+            override fun run() {
+                try {
+                    fetchHTTP("direction")
+                }
+                catch (e: Exception){
+                    Log.e("HTTP", "❌ Error fetching line direction: ${e.message}")
+                }
+                handler.postDelayed(this, 2000)
+            }
+        }
+
+        switch_lineTrack = findViewById(R.id.switch_lineTrack)
+        switch_lineTrack?.setOnCheckedChangeListener { _, isChecked ->
+            if(isChecked) {
+                bleSend("T")
+                facePoller.let { handler.removeCallbacks(it) }
+                handler.post(lineTrackPoller)
+                // cameraWebView?.loadUrl("about:blank")
+            }
+            else {
+                bleSend("N")
+                lineTrackPoller.let { handler.removeCallbacks(it) }
+                handler.post(facePoller)
+                bleRetryRunnable?.let { handler.removeCallbacks(it) }
+                voiceControlRunnable?.let { handler.removeCallbacks(it) }
+                processMoveCommand("stop", 0, 0)
+                // loadVideoStream(edittextcamIP?.text.toString())
+                handler.postDelayed(
+                    {runOnUiThread {
+                    joystickView?.isAutoReCenterButton = true
+                }}, 2000)
+            }
+        }
+
+        handler.post(facePoller)
+        bleSend("B")
+
+        val btn_cruiseTest = findViewById<Button>(R.id.btn_cruiseTest)
+        btn_cruiseTest.setOnClickListener {
+            btn_cruiseTest.text = "Running"
+            btn_cruiseTest.alpha = 0.5f
+            runOnUiThread {
+                btn_cruiseTest.isEnabled = false
+            }
+
+            val forwardRunnable = Runnable {
+                processMoveCommand("forward", 30, 0)
+            }
+            val backwardRunnable = Runnable {
+                processMoveCommand("backward", 30, 0)
+            }
+            val leftRunnable = Runnable {
+                processMoveCommand("left", 0, 30)
+            }
+            val rightRunnable = Runnable {
+                processMoveCommand("right", 0, 30)
+            }
+            val stopRunnable = Runnable {
+                processMoveCommand("stop", 0, 0)
+            }
+            handler.postDelayed(forwardRunnable, 5000)
+            handler.postDelayed(stopRunnable, 10000)
+            handler.postDelayed(backwardRunnable, 15000)
+            handler.postDelayed(stopRunnable, 20000)
+//            handler.postDelayed(leftRunnable, 25000)
+//            handler.postDelayed(stopRunnable, 25000 + 1000)
+//            handler.postDelayed(leftRunnable, 30000 + 1000)
+//            handler.postDelayed(stopRunnable, 30000 + 1000 + 1000)
+//            handler.postDelayed(rightRunnable, 35000 + 1000 + 1000)
+//            handler.postDelayed(stopRunnable, 35000 + 1000 + 1000 + 1000)
+//            handler.postDelayed(rightRunnable, 40000 + 1000 + 1000 + 1000)
+//            handler.postDelayed(stopRunnable, 40000 + 1000 + 1000 + 1000 + 1000)
+            handler.postDelayed({
+                for (r: Runnable in arrayOf(forwardRunnable, backwardRunnable, leftRunnable, rightRunnable, stopRunnable)) {
+                    handler.removeCallbacks(r)
+                }
+                btn_cruiseTest.text = "Test"
+                btn_cruiseTest.alpha = 1.0f
+                runOnUiThread {
+                    btn_cruiseTest.isEnabled = true
+                } }, 20010)
+        }
+    }
+
+    private fun loadVideoStream(ip: String) {
+         cameraWebView?.loadUrl("http://$ip:5000/video_feed")
     }
 
     private fun startSpeechRecognition() {
@@ -343,69 +502,185 @@ class RobotControlActivity : AppCompatActivity() {
         }
     }
 
-    private fun processVoiceCommand(command: String) {
+    private fun processMoveCommand(command: String, forwardstrength: Int, turnstrength: Int) {
+        bleRetryRunnable?.let { handler.removeCallbacks(it) }
+        voiceControlRunnable?.let { handler.removeCallbacks(it) }
         when {
-            command.contains("forward") -> {
+            command.contains("forward") || command.contains("ford") -> {
                 joystickView?.isAutoReCenterButton = false
-                joystickView?.apply { setJoystickPosition(this, 90, 40) }
+                joystickView?.apply { setJoystickPosition(this, 0, 0) }
+                voiceControlRunnable = Runnable {
+                    joystickView?.apply {
+                        setJoystickPosition(this, 90, forwardstrength, pressDuration = 2000)
+                    }
+                }
             }
             command.contains("backward") -> {
                 joystickView?.isAutoReCenterButton = false
-                joystickView?.apply { setJoystickPosition(this, 270, 40) }
+                joystickView?.apply { setJoystickPosition(this, 0, 0) }
+                voiceControlRunnable = Runnable {
+                    joystickView?.apply {
+                        setJoystickPosition(this, 270, forwardstrength, pressDuration = 2000)
+                    }
+                }
             }
             command.contains("left") -> {
                 joystickView?.isAutoReCenterButton = false
-                joystickView?.apply { setJoystickPosition(this, 180, 40) }
+                joystickView?.apply { setJoystickPosition(this, 0, 0) }
+                voiceControlRunnable = Runnable {
+                    joystickView?.apply {
+                        setJoystickPosition(this, 180, turnstrength, pressDuration = 2000)
+                    }
+                }
             }
             command.contains("right") -> {
                 joystickView?.isAutoReCenterButton = false
-                joystickView?.apply { setJoystickPosition(this, 0, 40) }
+                joystickView?.apply {setJoystickPosition(this, 0, 0) }
+                voiceControlRunnable = Runnable {
+                    joystickView?.apply {
+                        setJoystickPosition(this, 0, turnstrength, pressDuration = 2000)
+                    }
+                }
             }
             command.contains("stop") -> {
                 joystickView?.isAutoReCenterButton = false
-                joystickView?.apply { setJoystickPosition(this, 0, 0) }
+                bleRetryRunnable?.let { handler.removeCallbacks(it) }
+                voiceControlRunnable?.let { handler.removeCallbacks(it) }
+                joystickView?.apply {
+                    setJoystickPosition(this, 0, 0, duration = 0, steps = 1, pressDuration = 0)
+                }
+            }
+            command.contains("TRACK") -> {
+                var moveValue = command.replace("TRACK", "").toDouble()
+                var moveStrength = 20
+                var seeNothing = false
+                if(moveValue > 100) {
+                    seeNothing = true
+                }
+                joystickView?.isAutoReCenterButton = false
+                if (!seeNothing) {
+                    when {
+                        moveValue > 25.0 -> {
+                            moveStrength = 35
+                            moveValue = 60.0
+                            trackTurn = true
+                        }
+                        moveValue < -25.0 -> {
+                            moveStrength = 35
+                            moveValue = -60.0
+                            trackTurn = true
+                        }
+                        else -> {
+                            moveStrength = 20
+                            moveValue = 0.0
+                            trackTurn = false
+                        }
+                    }
+                } else {
+                    moveValue = -180.0
+                    moveStrength = 25
+                }
+                voiceControlRunnable = Runnable {
+                    joystickView?.apply {
+                        if(trackTurn){
+                            setJoystickPosition(this, 90 - moveValue.toInt(), moveStrength, steps = 3, pressDuration = 1100)
+                        } else {
+                            setJoystickPosition(this, 90 - moveValue.toInt(), moveStrength, pressDuration = 1000)
+                        }
+                    }
+                }
             }
         }
-        joystickView?.isAutoReCenterButton = true
+        voiceControlRunnable?.let {
+            handler.postDelayed(it, 10)
+        }
+        voiceControlRunnable = null
     }
 
-    fun setJoystickPosition(joystickView: JoystickView, angle: Int, strength: Int) {
+    fun setJoystickPosition(joystickView: JoystickView, angle: Int, strength: Int, duration: Long = 100L, steps: Int = 5, pressDuration: Int = 1000) {
         if (joystickView.width == 0 || joystickView.height == 0) {
-            return // Joystick is not yet measured, prevent crashes
+            return // Joystick is not yet measured
         }
+
+        moveRunnable?.let { handler.removeCallbacks(it) }
+        upRunnable?.let { handler.removeCallbacks(it) }
 
         val centerX = joystickView.width / 2f
         val centerY = joystickView.height / 2f
-        val maxRadius = joystickView.width / 2f // Assuming square layout
+        val maxRadius = joystickView.width / 2f
 
-        // Convert angle to radians
         val radianAngle = Math.toRadians(angle.toDouble())
 
-        // Calculate new touch position based on strength percentage
-        val xOffset = (-cos(radianAngle) * maxRadius * (strength / 100.0)).toFloat()
-        val yOffset = (sin(radianAngle) * maxRadius * (strength / 100.0)).toFloat()
-
-        val touchX = centerX + xOffset
-        val touchY = centerY + yOffset
+        val targetXOffset = (cos(radianAngle) * maxRadius * (strength / 100.0)).toFloat()
+        val targetYOffset = (-sin(radianAngle) * maxRadius * (strength / 100.0)).toFloat()
 
         val downTime = SystemClock.uptimeMillis()
 
-        // Simulate user touching the joystick
-        val downEvent = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, touchX, touchY, 0)
+        // Touch down at center
+        val downEvent = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, centerX, centerY, 0)
         joystickView.dispatchTouchEvent(downEvent)
-
-        // Simulate joystick movement
-        val moveEvent = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_MOVE, touchX, touchY, 0)
-        joystickView.dispatchTouchEvent(moveEvent)
-
-        // Optional: Simulate user releasing the joystick (auto-recenter)
-        val upEvent = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, centerX, centerY, 0)
-        joystickView.dispatchTouchEvent(upEvent)
-
-        // Recycle MotionEvents
         downEvent.recycle()
-        moveEvent.recycle()
-        upEvent.recycle()
+
+        for (i in 1..steps) {
+            val fraction = i / steps.toFloat()
+            val interpolatedX = centerX + targetXOffset * fraction
+            val interpolatedY = centerY + targetYOffset * fraction
+            val eventTime = downTime + (duration * fraction).toLong()
+
+
+            moveRunnable = Runnable {
+                val moveEvent = MotionEvent.obtain(downTime, eventTime, MotionEvent.ACTION_MOVE, interpolatedX, interpolatedY, 0)
+                joystickView.dispatchTouchEvent(moveEvent)
+                moveEvent.recycle()
+            }
+            moveRunnable?.let{handler.postDelayed(it, (duration * fraction).toLong())}
+        }
+
+        // Release at target (or center, depending on behavior)
+        upRunnable = Runnable {
+            val upEvent = MotionEvent.obtain(downTime, downTime + duration, MotionEvent.ACTION_UP, centerX, centerY, 0)
+            joystickView.dispatchTouchEvent(upEvent)
+            upEvent.recycle()
+            joystickView.apply {
+                this.isAutoReCenterButton = true
+            }
+        }
+        upRunnable?.let {handler.postDelayed(it, duration + pressDuration)}
+    }
+
+
+    private fun sendStandByToESP32() {
+        if (!checkStoragePermission()) {
+            Toast.makeText(this, "Storage permission required!", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val filePath = "/storage/emulated/0/ELEC391/plz_standby.wav" // Adjust if needed
+        val file = File(filePath)
+
+        if (!file.exists()) {
+            Log.e("FILE", "Audio file not found!")
+            Toast.makeText(this, "Audio file not found!", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        try {
+            val inputStream = FileInputStream(file)
+            val buffer = ByteArray(BUFFER_SIZE) // Chunk size for sending
+
+            while (inputStream.read(buffer) != -1) {
+                if (webSocketClient?.isOpen == true) {
+                    webSocketClient?.send(buffer) // Send chunks over WebSocket
+                } else {
+                    Log.e("WebSocket", "WebSocket disconnected! Stopping audio transmission...")
+                    break
+                }
+            }
+
+            inputStream.close()
+            Log.d("FILE", "Finished sending file!")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun connectWebSocket() {
@@ -444,7 +719,7 @@ class RobotControlActivity : AppCompatActivity() {
             override fun onClose(code: Int, reason: String, remote: Boolean) {
                 Log.e("WebSocket", "Disconnected: $reason. Trying to reconnect...")
                 mIsWebSocketConnected = false
-                reconnectWebSocket()
+                // reconnectWebSocket()
             }
 
             override fun onError(ex: Exception) {
@@ -458,7 +733,7 @@ class RobotControlActivity : AppCompatActivity() {
     fun reconnectWebSocket() {
         Thread {
             try {
-                Thread.sleep(2000)  // Wait before reconnecting
+                Thread.sleep(5000)
                 connectWebSocket()
             } catch (e: InterruptedException) {
                 e.printStackTrace()
@@ -529,7 +804,11 @@ class RobotControlActivity : AppCompatActivity() {
                 val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
                 if (read > 0) {
                     if (webSocketClient?.isOpen == true) {
-                        webSocketClient?.send(buffer)
+                        try {
+                            webSocketClient?.send(buffer)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
                     } else {
                         Log.e("WebSocket", "WebSocket disconnected! Stopping audio transmission...")
                         stopWebSocketAudio() // Stop audio if WebSocket is disconnected
@@ -593,23 +872,36 @@ class RobotControlActivity : AppCompatActivity() {
         return true
     }
 
+    private fun checkStoragePermission(): Boolean {
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.READ_MEDIA_AUDIO)
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                arrayOf(android.Manifest.permission.READ_MEDIA_AUDIO), 101)
+            return false
+        }
+        return true
+    }
+
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         super.onBackPressed()
         if(mIsConnected){
             bluetoothGatt?.disconnect()
-            handler.removeCallbacksAndMessages(null)
+            bleRetryRunnable?.let { handler.removeCallbacks(it) }
         }
         webSocketClient?.close()
+        handler.removeCallbacksAndMessages(null)
         overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, R.anim.fade_in, R.anim.fade_out) // Add fade-out animation
         finish()
     }
 
     override fun onDestroy() {
-        super.onDestroy()
         webSocketClient?.close()
         speechRecognizer.destroy()
+        cameraWebView?.loadUrl("about:blank")
+        handler.removeCallbacksAndMessages(null)
+        super.onDestroy()
     }
 
     private class ConnectToDevice(c: Context) : AsyncTask<Void, Void, String>(){
@@ -774,7 +1066,21 @@ class RobotControlActivity : AppCompatActivity() {
     }
 
     private fun processReceivedData(data: String) {
-        receivedText?.text = data
+        val dist = when {
+            data.toDouble() > 2.54 -> "< 5cm"
+            data.toDouble() in 1.48..2.54 -> "5cm ~ 10cm"
+            data.toDouble() in 1.0..1.48 -> "10cm ~ 15cm"
+            data.toDouble() in 0.8..1.0 -> "15cm ~ 20cm"
+            data.toDouble() < 0.8 -> "> 20cm"
+            else -> ""
+        }
+        if(data.toDouble() > 1.48) {
+            tv_tooClose?.visibility = View.VISIBLE
+        } else {
+            tv_tooClose?.visibility = View.INVISIBLE
+        }
+        receivedText?.text = dist
+        IRvoltage = data.toDouble()
     }
 
     private fun processBattInfo(batteryLvl: String, temperatureLvl: String, humidityLvl: String) {
@@ -787,9 +1093,8 @@ class RobotControlActivity : AppCompatActivity() {
         batteryMeter?.chargeLevel = batteryLevel.toInt()
     }
 
-    private val handler = Handler(Looper.getMainLooper())
     // BLE Send Function with Retry Mechanism
-    private fun bleSend(data: String) {
+    fun bleSend(data: String) {
         if (!mIsConnected) return // Prevent sending if disconnected
 
         val service = bluetoothGatt?.getService(mServiceUUID)
@@ -805,13 +1110,56 @@ class RobotControlActivity : AppCompatActivity() {
                 Log.e("BLE", "Write failed: Prior command not finished, retrying...")
                 if (retryCount < maxRetries) {
                     retryCount++
-                    handler.postDelayed({ bleSend(data) }, 200) // Retry after 200ms
+                    bleRetryRunnable = Runnable { bleSend(data) } // Retry after 200ms
+                    handler.postDelayed( bleRetryRunnable!!, 200)
                 } else {
                     Log.e("BLE", "Max retry attempts reached. Dropping command: $data")
                 }
             } else {
                 retryCount = 0 // Reset retry count on success
+                bleRetryRunnable = null
             }
         }
+    }
+
+    fun fetchHTTP(mode: String) {
+        val client = OkHttpClient()
+        val request = Request.Builder()
+            .url("http://" + FACE_RECO_IP + ":5000/" + mode)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e("HTTP", "Failed to fetch HTTP: ${e.message}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body()?.string()
+                if (response.isSuccessful && responseBody != null) {
+                    val json = JSONObject(responseBody)
+                    when (mode) {
+                        "count" -> {
+                            val count = json.getInt("count")
+                            if(count > 0 && facePollDebounce) {
+                                Log.d("Face Recognition", "Face detected!")
+                                if (switch_face?.isChecked == true){
+                                    sendStandByToESP32()
+                                }
+                                facePollDebounce = false
+                                handler.postDelayed({ facePollDebounce = true }, 5000)
+                            }
+                        }
+                        "direction" -> {
+                            val moveDirection = json.getString("direction")
+                            Log.d("Line Following", "Direction: $moveDirection")
+                            processMoveCommand("TRACK$moveDirection",-1,-1)
+                        }
+                    }
+
+                } else {
+                    Log.e("HTTP", "Response failed or body is null")
+                }
+            }
+        })
     }
 }

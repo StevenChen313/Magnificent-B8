@@ -33,6 +33,84 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
+    <TextView
+        android:id="@+id/tv_lineTrack"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Line\nTrack:"
+        app:layout_constraintLeft_toLeftOf="@+id/switch_lineTrack"
+        app:layout_constraintRight_toRightOf="@+id/switch_lineTrack"
+        app:layout_constraintTop_toBottomOf="@+id/cameraWebView"/>
+
+    <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/switch_lineTrack"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:layout_marginRight="10dp"
+        app:layout_constraintRight_toLeftOf="@id/btn_speech_to_text"
+        app:layout_constraintTop_toBottomOf="@+id/tv_lineTrack"/>
+
+    <Button
+        android:id="@+id/btn_servoUp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:backgroundTint="@color/gray"
+        android:padding="0dp"
+        android:paddingTop="0dp"
+        android:paddingBottom="0dp"
+        android:text="↑"
+        android:textColor="@color/black"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHeight_percent="0.05"
+        app:layout_constraintHorizontal_bias="0.95"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/cameraWebView"
+        app:layout_constraintWidth_percent="0.15"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="10dp"/>
+
+    <Button
+        android:id="@+id/btn_servoDown"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:backgroundTint="@color/gray"
+        android:padding="0dp"
+        android:paddingTop="0dp"
+        android:paddingBottom="0dp"
+        android:text="↓"
+        android:textColor="@color/black"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHeight_percent="0.05"
+        app:layout_constraintHorizontal_bias="0.95"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btn_servoUp"
+        app:layout_constraintWidth_percent="0.15"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="20dp" />
+
+    <Button
+        android:visibility="gone"
+        android:id="@+id/btn_cruiseTest"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:backgroundTint="@color/gray"
+        android:padding="0dp"
+        android:paddingTop="0dp"
+        android:paddingBottom="0dp"
+        android:text="Test"
+        android:textColor="@color/black"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHeight_percent="0.05"
+        app:layout_constraintHorizontal_bias="0.02"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/switch_lineTrack"
+        app:layout_constraintWidth_percent="0.2"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="20dp" />
+
     <Button
         android:id="@+id/btn_speech_to_text"
         android:layout_width="0dp"
@@ -53,6 +131,8 @@
         android:id="@+id/recognizedTextView"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:layout_margin="0dp"
+        android:padding="0dp"
         android:textSize="16sp"
         android:textAlignment="center"
         app:layout_constraintBottom_toTopOf="@+id/joystickBackground"
@@ -62,11 +142,12 @@
         app:layout_constraintWidth_percent="0.6" />
 
     <TextView
+        android:id="@+id/tv_CAM"
         android:layout_width="wrap_content"
         android:layout_height="40dp"
         android:text="CAM: "
-        android:textSize="16sp"
         android:textAlignment="center"
+        android:textSize="16sp"
         app:layout_constraintEnd_toStartOf="@+id/edittext_camIP"
         app:layout_constraintTop_toTopOf="@+id/edittext_camIP" />
 
@@ -76,13 +157,38 @@
         android:layout_height="40dp"
         android:autofillHints="Speech To Text"
         android:inputType="text"
-        android:text="192.168.212.19"
+        android:text="192.168.4.2"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.18"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
+        android:id="@+id/tv_FAC"
+        android:visibility="gone"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:text="FAC: "
+        android:textAlignment="center"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toStartOf="@+id/edittext_facIP"
+        app:layout_constraintTop_toTopOf="@+id/edittext_facIP" />
+
+    <EditText
+        android:id="@+id/edittext_facIP"
+        android:visibility="gone"
+        android:layout_width="140dp"
+        android:layout_height="40dp"
+        android:autofillHints="Speech To Text"
+        android:inputType="text"
+        android:text="192.168.187.243"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.18"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/edittext_camIP" />
+
+    <TextView
+        android:id="@+id/tv_AUD"
         android:layout_width="wrap_content"
         android:layout_height="40dp"
         android:text="AUD: "
@@ -97,11 +203,36 @@
         android:layout_height="40dp"
         android:autofillHints="Speech To Text"
         android:inputType="text"
-        android:text="192.168.140.78"
+        android:text="192.168.187.78"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.18"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/edittext_camIP" />
+        app:layout_constraintTop_toBottomOf="@+id/edittext_facIP" />
+
+    <Button
+        android:id="@+id/btn_retryaudIP"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:backgroundTint="@color/gray"
+        android:padding="0dp"
+        android:paddingTop="0dp"
+        android:paddingBottom="0dp"
+        android:text="⟳"
+        android:textColor="@color/black"
+        android:textSize="12sp"
+        app:layout_constraintHeight_percent="0.05"
+        app:layout_constraintStart_toEndOf="@+id/edittext_audIP"
+        app:layout_constraintTop_toBottomOf="@+id/edittext_facIP"
+        app:layout_constraintWidth_percent="0.05" />
+
+    <Switch
+        android:visibility="gone"
+        android:id="@+id/switch_face"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:layout_marginRight="10dp"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/btn_sendVoice"/>
 
     <Button
         android:id="@+id/btn_sendVoice"
@@ -137,18 +268,40 @@
         app:layout_constraintWidth_percent="0.9" />
 
     <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Distance:"
+        app:layout_constraintBottom_toTopOf="@+id/received_text"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.02"/>
+
+    <TextView
         android:id="@+id/received_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:layout_constraintBottom_toTopOf="@+id/btn_disconnect"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintHorizontal_bias="0.02"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="1.0" />
+        app:layout_constraintVertical_bias="0.8" />
+
+    <TextView
+        android:id="@+id/tv_tooClose"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Too Close!"
+        android:textColor="@color/red"
+        android:visibility="invisible"
+        app:layout_constraintTop_toBottomOf="@+id/received_text"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.02"/>
 
     <Button
         android:id="@+id/btn_disconnect"
+        android:visibility="gone"
         android:layout_width="0dp"
         android:layout_height="0dp"
         app:layout_constraintHeight_percent="0.07"
@@ -165,14 +318,14 @@
 
     <eo.view.batterymeter.BatteryMeterView
         android:id="@+id/batteryMeter"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:batteryMeterChargeLevel="0"
         app:batteryMeterChargingColor="#4caf50"
         app:batteryMeterColor="#0277bd"
-        app:batteryMeterCriticalChargeLevel="20"
+        app:batteryMeterCriticalChargeLevel="60"
         app:batteryMeterCriticalColor="#d84315"
         app:batteryMeterIndicatorColor="@android:color/transparent"
         app:batteryMeterTheme="rounded"
@@ -180,7 +333,7 @@
 
     <TextView
         android:id="@+id/tv_batteryLevel"
-        android:layout_width="60dp"
+        android:layout_width="40dp"
         android:layout_height="wrap_content"
         app:layout_constraintTop_toBottomOf="@+id/batteryMeter"
         app:layout_constraintRight_toRightOf="parent"
@@ -208,9 +361,9 @@
     <WebView
         android:id="@+id/cameraWebView"
         android:layout_width="360dp"
-        android:layout_height="260dp"
+        android:layout_height="280dp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tv_batteryLevel" />
+        app:layout_constraintTop_toBottomOf="@+id/edittext_audIP" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
